@@ -44,9 +44,9 @@ export const AdditionalDataForm: React.FC<AdditionalDataFormProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 p-6 text-white">
-          <h2 className="text-2xl font-bold mb-2">Additional Plant Data</h2>
+          <h2 className="text-2xl font-bold mb-2">Plant Environment Data</h2>
           <p className="text-blue-100">
-            Provide environmental data for more accurate diagnosis and recommendations
+            Help our AI provide more accurate diagnosis by sharing your plant's environmental conditions
           </p>
         </div>
 
@@ -202,7 +202,7 @@ export const AdditionalDataForm: React.FC<AdditionalDataFormProps> = ({
               type="submit"
               className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
             >
-              Save & Continue
+              Analyze with Data
             </button>
             <button
               type="button"
@@ -212,7 +212,7 @@ export const AdditionalDataForm: React.FC<AdditionalDataFormProps> = ({
               }}
               className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-3 px-6 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
             >
-              Skip for Now
+              Analyze Without Data
             </button>
           </div>
 
@@ -220,7 +220,7 @@ export const AdditionalDataForm: React.FC<AdditionalDataFormProps> = ({
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <p className="text-blue-800 dark:text-blue-200 text-sm">
               <strong>Why this data helps:</strong> Environmental conditions significantly impact plant health. 
-              This information allows our AI to provide more accurate diagnoses and personalized treatment recommendations.
+              Providing this information before analysis allows our AI to consider these factors and provide more accurate diagnoses and personalized treatment recommendations.
             </p>
           </div>
         </form>

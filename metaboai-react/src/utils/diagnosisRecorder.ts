@@ -47,6 +47,19 @@ export const recordDiagnosisToLocalStorage = async (diagnosisRecord: DiagnosisRe
     // Get existing records
     const existingRecords = getDiagnosisRecords();
     
+    // Check for duplicates based on userId, imageUrl, and topPrediction
+    const isDuplicate = existingRecords.some(existing => 
+      existing.userId === diagnosisRecord.userId &&
+      existing.imageUrl === diagnosisRecord.imageUrl &&
+      existing.topPrediction.className === diagnosisRecord.topPrediction.className &&
+      Math.abs(existing.timestamp - diagnosisRecord.timestamp) < 5000 // Within 5 seconds
+    );
+    
+    if (isDuplicate) {
+      console.log('🔄 Duplicate diagnosis detected at storage level, skipping save');
+      return;
+    }
+    
     // Add new record
     const updatedRecords = [diagnosisRecord, ...existingRecords];
     
@@ -143,15 +156,15 @@ const calculateDashboardMetrics = (records: DiagnosisRecord[]): DashboardMetrics
   const recordsWithEnvData = records.filter(r => r.additionalData);
   const averageSoilPH = recordsWithEnvData.length > 0 
     ? recordsWithEnvData.reduce((sum, r) => sum + r.additionalData!.soilPH, 0) / recordsWithEnvData.length
-    : 7.0;
+    : 0;
   
   const averageTemperature = recordsWithEnvData.length > 0
     ? recordsWithEnvData.reduce((sum, r) => sum + r.additionalData!.temperature, 0) / recordsWithEnvData.length
-    : 24;
+    : 0;
     
   const averageHumidity = recordsWithEnvData.length > 0
     ? recordsWithEnvData.reduce((sum, r) => sum + r.additionalData!.humidity, 0) / recordsWithEnvData.length
-    : 65;
+    : 0;
 
   return {
     totalDiagnoses,
@@ -243,6 +256,40 @@ export const clearDiagnosisRecords = async (): Promise<void> => {
     console.log('All diagnosis records cleared');
   } catch (error) {
     console.error('Failed to clear diagnosis records:', error);
+  }
+};
+
+/**
+ * Remove duplicate diagnosis records based on imageUrl and topPrediction
+ * @returns Promise<void>
+ */
+export const removeDuplicateDiagnoses = async (): Promise<void> => {
+  try {
+    const records = getDiagnosisRecords();
+    const seen = new Set<string>();
+    const uniqueRecords: DiagnosisRecord[] = [];
+    
+    records.forEach(record => {
+      // Create a unique key based on userId, imageUrl, and top prediction
+      const key = `${record.userId}_${record.imageUrl}_${record.topPrediction.className}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueRecords.push(record);
+      } else {
+        console.log('🗑️ Removing duplicate diagnosis:', record.id);
+      }
+    });
+    
+    if (uniqueRecords.length < records.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueRecords));
+      await updateDashboardDataSeries(uniqueRecords);
+      console.log(`✅ Removed ${records.length - uniqueRecords.length} duplicate diagnoses`);
+    } else {
+      console.log('✅ No duplicates found');
+    }
+  } catch (error) {
+    console.error('Failed to remove duplicates:', error);
   }
 };
 

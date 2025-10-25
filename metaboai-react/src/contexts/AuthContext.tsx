@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { AuthState, UserPreferences } from '../types';
-import { fileAuthService } from '../services/fileAuthService';
+import { simpleAuthService } from '../services/simpleAuthService';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
@@ -23,43 +23,22 @@ export const useAuth = () => {
 // Default preferences removed - not used in current implementation
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Start with loading: false to prevent loading screen hang
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    loading: true,
+    loading: false, // Changed to false immediately
     error: null
   });
 
-  // Initialize auth state on mount
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        console.log('🔄 Initializing authentication...');
-        const user = await fileAuthService.getCurrentUser();
-        console.log('👤 Current user:', user ? user.email : 'None');
-        setAuthState({
-          user,
-          loading: false,
-          error: null
-        });
-      } catch (error) {
-        console.error('❌ Auth initialization failed:', error);
-        setAuthState({
-          user: null,
-          loading: false,
-          error: null
-        });
-      }
-    };
-
-    initializeAuth();
-  }, []);
+  // No useEffect needed - start ready immediately
+  console.log('✅ Auth initialized immediately - no loading state');
 
   const signIn = async (email: string, password: string) => {
     try {
       console.log('🔐 AuthContext: Starting sign in for', email);
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
-      const user = await fileAuthService.signIn(email, password);
+      const user = await simpleAuthService.signIn(email, password);
       console.log('✅ AuthContext: Sign in successful for', user.email);
       
       setAuthState({
@@ -79,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('📝 AuthContext: Starting sign up for', email);
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
-      const user = await fileAuthService.signUp(email, password, displayName);
+      const user = await simpleAuthService.signUp(email, password, displayName);
       console.log('✅ AuthContext: Sign up successful for', user.email);
       
       setAuthState({
@@ -99,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔐 AuthContext: Starting Google sign in');
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
-      const user = await fileAuthService.signInWithGoogle();
+      const user = await simpleAuthService.signInWithGoogle();
       console.log('✅ AuthContext: Google sign in successful');
       
       setAuthState({
@@ -117,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       console.log('🚪 AuthContext: Starting logout');
-      await fileAuthService.signOut();
+      await simpleAuthService.signOut();
       setAuthState({
         user: null,
         loading: false,
@@ -135,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!authState.user) return;
 
     try {
-      await fileAuthService.updateUserPreferences(authState.user.id, preferences);
+      await simpleAuthService.updateUserPreferences(authState.user.id, preferences);
       
       const updatedPreferences = { ...authState.user.preferences, ...preferences };
       

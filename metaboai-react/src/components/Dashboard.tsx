@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { getMetrics, getDiagnosisHistory } from '../utils/storage';
-import { DashboardMetrics, DiagnosisResult } from '../types';
+import { getUserDiagnosisRecords, getDashboardData, clearDiagnosisRecords } from '../utils/diagnosisRecorder';
+import { DashboardMetrics } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 // Register Chart.js components
@@ -11,18 +11,62 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [recentDiagnoses, setRecentDiagnoses] = useState<DiagnosisResult[]>([]);
+  const [recentDiagnoses, setRecentDiagnoses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [hasEnvironmentalData, setHasEnvironmentalData] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const metricsData = await getMetrics(user?.id);
-        const diagnosesData = await getDiagnosisHistory(user?.id);
         
-        setMetrics(metricsData);
-        setRecentDiagnoses(diagnosesData.slice(0, 5)); // Last 5 diagnoses
+        if (user) {
+          // Get user-specific diagnosis records
+          const userDiagnoses = getUserDiagnosisRecords(user.id);
+          console.log('📊 Loading dashboard for user:', user.id, 'Found diagnoses:', userDiagnoses.length);
+          
+          // Get dashboard data (metrics)
+          const dashboardData = getDashboardData();
+          const metricsData = dashboardData?.metrics;
+          
+          // Calculate environmental averages only from records with additional data
+          const recordsWithEnvData = userDiagnoses.filter(d => d.additionalData);
+          const averageSoilPH = recordsWithEnvData.length > 0 
+            ? recordsWithEnvData.reduce((sum, d) => sum + d.additionalData!.soilPH, 0) / recordsWithEnvData.length 
+            : 0;
+          const averageTemperature = recordsWithEnvData.length > 0
+            ? recordsWithEnvData.reduce((sum, d) => sum + d.additionalData!.temperature, 0) / recordsWithEnvData.length
+            : 0;
+          const averageHumidity = recordsWithEnvData.length > 0
+            ? recordsWithEnvData.reduce((sum, d) => sum + d.additionalData!.humidity, 0) / recordsWithEnvData.length
+            : 0;
+
+          setMetrics(metricsData || {
+            totalDiagnoses: userDiagnoses.length,
+            healthyPlants: userDiagnoses.filter(d => d.topPrediction.className === 'Healthy').length,
+            diseasedPlants: userDiagnoses.filter(d => d.topPrediction.className !== 'Healthy').length,
+            waterSaved: userDiagnoses.reduce((sum, d) => sum + (d.businessMetrics?.water_saved_est || 0), 0),
+            pesticidesAvoided: userDiagnoses.reduce((sum, d) => sum + (d.businessMetrics?.pesticide_avoided_est || 0), 0),
+            diseaseFrequency: userDiagnoses.reduce((freq: Record<string, number>, d) => {
+              const disease = d.topPrediction.className;
+              freq[disease] = (freq[disease] || 0) + 1;
+              return freq;
+            }, {}),
+            averageSoilPH,
+            averageTemperature,
+            averageHumidity
+          });
+          
+          setRecentDiagnoses(userDiagnoses.slice(0, 5)); // Last 5 diagnoses
+          
+          // Store whether we have environmental data for conditional rendering
+          setHasEnvironmentalData(recordsWithEnvData.length > 0);
+        } else {
+          // No user logged in
+          setMetrics(null);
+          setRecentDiagnoses([]);
+        }
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -31,11 +75,28 @@ export const Dashboard: React.FC = () => {
     };
 
     loadData();
-    
-    // Remove auto-refresh for better performance
-    // const interval = setInterval(loadData, 30000);
-    // return () => clearInterval(interval);
   }, [user]);
+
+  const handleResetDashboard = async () => {
+    try {
+      await clearDiagnosisRecords();
+      console.log('🗑️ Dashboard data cleared');
+      
+      // Reset state
+      setMetrics(null);
+      setRecentDiagnoses([]);
+      setShowResetConfirm(false);
+      setHasEnvironmentalData(false);
+      
+      // Reload data (will show empty state)
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
+    } catch (error) {
+      console.error('Failed to reset dashboard:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -126,12 +187,32 @@ export const Dashboard: React.FC = () => {
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
-          {user ? `${user.displayName}'s Dashboard` : 'SnapFarm Dashboard'}
-        </h1>
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+            {user ? `${user.displayName}'s Dashboard` : 'SnapFarm Dashboard'}
+          </h1>
+          {user && metrics && metrics.totalDiagnoses > 0 && (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              title="Reset all dashboard data"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Reset Data
+            </button>
+          )}
+        </div>
         <p className="text-gray-600 dark:text-gray-400 text-lg">
           Track your plant health and sustainability impact
         </p>
+        {/* Debug info */}
+        {user && (
+          <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            User ID: {user.id} • Diagnoses: {recentDiagnoses.length}
+          </div>
+        )}
       </div>
 
       {/* Key Metrics Cards */}
@@ -210,8 +291,9 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Environmental Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Environmental Metrics - Only show if user has provided environmental data */}
+      {hasEnvironmentalData && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-soft border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Average Soil pH</h3>
@@ -277,7 +359,8 @@ export const Dashboard: React.FC = () => {
             </span>
           </p>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -364,6 +447,12 @@ export const Dashboard: React.FC = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Confidence: {(diagnosis.topPrediction.probability * 100).toFixed(1)}%
                     </p>
+                    {diagnosis.businessMetrics && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        Water saved: {diagnosis.businessMetrics.water_saved_est.toFixed(1)}L • 
+                        Pesticides avoided: {diagnosis.businessMetrics.pesticide_avoided_est.toFixed(0)}ml
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -420,6 +509,41 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 text-center mb-2">
+                Reset Dashboard Data
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+                This will permanently delete all your diagnosis records, metrics, and dashboard data. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetDashboard}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Reset All Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

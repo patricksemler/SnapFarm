@@ -6,11 +6,13 @@ import { getAIFocusHints } from '../utils/inference';
 interface ResultsCardProps {
   predictions: Prediction[];
   imageUrl: string;
+  hasEnvironmentalData?: boolean;
 }
 
 export const ResultsCard: React.FC<ResultsCardProps> = ({ 
   predictions, 
-  imageUrl
+  imageUrl,
+  hasEnvironmentalData = false
 }) => {
   const [activeTab, setActiveTab] = useState<'predictions' | 'recommendations' | 'focus'>('predictions');
 

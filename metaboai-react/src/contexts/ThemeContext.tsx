@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -21,7 +20,6 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, updateUserPreferences } = useAuth();
   const [theme, setThemeState] = useState<Theme>('light');
   const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
 
@@ -41,17 +39,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Set theme and update user preferences
   const setTheme = async (newTheme: Theme) => {
     setThemeState(newTheme);
-    
-    if (user) {
-      try {
-        await updateUserPreferences({ theme: newTheme });
-      } catch (error) {
-        console.error('Failed to save theme preference:', error);
-      }
-    } else {
-      // Save to localStorage for non-authenticated users
-      localStorage.setItem('snapfarm-theme', newTheme);
-    }
+    // Save to localStorage
+    localStorage.setItem('snapfarm-theme', newTheme);
   };
 
   // Toggle between light and dark (skip system)
@@ -74,27 +63,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     
     // Save preference
-    if (user) {
-      updateUserPreferences({ theme: newTheme }).catch(console.error);
-    } else {
-      localStorage.setItem('snapfarm-theme', newTheme);
-    }
+    localStorage.setItem('snapfarm-theme', newTheme);
   };
 
-  // Initialize theme from user preferences or localStorage
+  // Initialize theme from localStorage
   useEffect(() => {
-    if (user?.preferences?.theme) {
-      setThemeState(user.preferences.theme);
+    const savedTheme = localStorage.getItem('snapfarm-theme') as Theme;
+    if (savedTheme) {
+      setThemeState(savedTheme);
     } else {
-      const savedTheme = localStorage.getItem('snapfarm-theme') as Theme;
-      if (savedTheme) {
-        setThemeState(savedTheme);
-      } else {
-        // Default to light theme
-        setThemeState('light');
-      }
+      // Default to light theme
+      setThemeState('light');
     }
-  }, [user]);
+  }, []);
 
   // Update actual theme when theme preference changes
   useEffect(() => {

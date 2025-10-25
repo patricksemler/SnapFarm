@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { AuthDebug } from './AuthDebug';
 
 export const Home: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -277,6 +278,8 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
+      {/* Debug component */}
+      <AuthDebug />
     </div>
   );
 };
