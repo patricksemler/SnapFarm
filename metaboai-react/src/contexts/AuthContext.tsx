@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthState, UserPreferences } from '../types';
 import { simpleAuthService } from '../services/simpleAuthService';
 
@@ -23,15 +23,46 @@ export const useAuth = () => {
 // Default preferences removed - not used in current implementation
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Start with loading: false to prevent loading screen hang
+  // Start with loading: true to check for existing session
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    loading: false, // Changed to false immediately
+    loading: true,
     error: null
   });
 
-  // No useEffect needed - start ready immediately
-  console.log('✅ Auth initialized immediately - no loading state');
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        console.log('🔍 Checking for existing session...');
+        const user = await simpleAuthService.getCurrentUser();
+        if (user) {
+          console.log('✅ Restored session for:', user.email);
+          setAuthState({
+            user,
+            loading: false,
+            error: null
+          });
+        } else {
+          console.log('👤 No existing session found');
+          setAuthState({
+            user: null,
+            loading: false,
+            error: null
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error checking session:', error);
+        setAuthState({
+          user: null,
+          loading: false,
+          error: null
+        });
+      }
+    };
+
+    checkExistingSession();
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {

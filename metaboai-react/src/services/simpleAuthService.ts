@@ -42,10 +42,10 @@ const getUsers = (): StoredUser[] => {
     
     // Initialize with test user (password: "password")
     const testUser: StoredUser = {
-        id: 'user_test_siddiddy',
-        email: 'siddiddy@gmail.com',
+        id: 'user_test_testuser',
+        email: 'testuser@gmail.com',
         passwordHash: '401ea01207177232ead63b34e321cfd84e04f926936ea3c9ea3bceb2d18f4d4f',
-        displayName: 'Sid Diddy',
+        displayName: 'test user',
         createdAt: Date.now(),
         preferences: {
             theme: 'system',
@@ -65,6 +65,32 @@ const saveUsers = (users: StoredUser[]): void => {
     localStorage.setItem('snapfarm_users', JSON.stringify(users));
 };
 
+// Cookie utilities for persistent login
+const setCookie = (name: string, value: string, days: number = 7): void => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    console.log('🍪 Cookie set:', name);
+};
+
+const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+            return c.substring(nameEQ.length, c.length);
+        }
+    }
+    return null;
+};
+
+const deleteCookie = (name: string): void => {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+    console.log('🗑️ Cookie deleted:', name);
+};
+
 // Convert StoredUser to User
 const toUser = (storedUser: StoredUser): User => ({
     id: storedUser.id,
@@ -76,10 +102,30 @@ const toUser = (storedUser: StoredUser): User => ({
 });
 
 export const simpleAuthService = {
-    // Get current user - always returns null to force fresh sign-ins
+    // Get current user from session cookie
     getCurrentUser: async (): Promise<User | null> => {
-        console.log('👤 getCurrentUser: returning null (no persistent sessions)');
-        return null;
+        const sessionId = getCookie('snapfarm_session');
+        if (!sessionId) {
+            console.log('👤 No session cookie found');
+            return null;
+        }
+
+        try {
+            const users = getUsers();
+            const user = users.find(u => u.id === sessionId);
+            if (user) {
+                console.log('👤 Restored user from session:', user.email);
+                return toUser(user);
+            } else {
+                console.log('👤 Session user not found, clearing cookie');
+                deleteCookie('snapfarm_session');
+                return null;
+            }
+        } catch (error) {
+            console.error('👤 Error restoring session:', error);
+            deleteCookie('snapfarm_session');
+            return null;
+        }
     },
 
     // Sign in
@@ -111,6 +157,9 @@ export const simpleAuthService = {
             throw new Error('Incorrect password. Please try again.');
         }
 
+        // Set session cookie for persistent login
+        setCookie('snapfarm_session', user.id, 7); // 7 days
+        
         console.log('✅ Sign in successful for:', user.email);
         return toUser(user);
     },
@@ -156,6 +205,9 @@ export const simpleAuthService = {
         users.push(newUser);
         saveUsers(users);
 
+        // Set session cookie for persistent login
+        setCookie('snapfarm_session', newUser.id, 7); // 7 days
+        
         console.log('✅ User created successfully:', newUser.email);
         return toUser(newUser);
     },
@@ -188,13 +240,16 @@ export const simpleAuthService = {
             saveUsers(users);
         }
 
+        // Set session cookie for persistent login
+        setCookie('snapfarm_session', user.id, 7); // 7 days
+
         return toUser(user);
     },
 
     // Sign out
     signOut: async (): Promise<void> => {
-        console.log('🚪 User signed out');
-        // No persistent sessions to clear
+        deleteCookie('snapfarm_session');
+        console.log('🚪 User signed out and session cleared');
     },
 
     // Update user preferences
@@ -213,7 +268,35 @@ export const simpleAuthService = {
     // Debug: Clear all data and reset test user
     resetTestData: (): void => {
         localStorage.removeItem('snapfarm_users');
-        console.log('🗑️ Cleared localStorage, test user will be recreated on next getUsers() call');
+        deleteCookie('snapfarm_session');
+        console.log('🗑️ Cleared localStorage and cookies, test user will be recreated on next getUsers() call');
+        // Force recreation of test user
+        getUsers();
+    },
+
+    // Force reset to new test user (removes old siddiddy data)
+    forceResetToTestUser: (): void => {
+        localStorage.removeItem('snapfarm_users');
+        deleteCookie('snapfarm_session');
+        
+        // Create fresh test user
+        const testUser: StoredUser = {
+            id: 'user_test_testuser',
+            email: 'testuser@gmail.com',
+            passwordHash: '401ea01207177232ead63b34e321cfd84e04f926936ea3c9ea3bceb2d18f4d4f',
+            displayName: 'test user',
+            createdAt: Date.now(),
+            preferences: {
+                theme: 'system',
+                notifications: true,
+                units: 'metric',
+                language: 'en'
+            }
+        };
+        
+        localStorage.setItem('snapfarm_users', JSON.stringify([testUser]));
+        console.log('✅ Force reset complete - only test user exists now');
+        console.log('📧 Login with: testuser@gmail.com / password');
     },
 
     // Debug: Show current localStorage data
@@ -231,6 +314,7 @@ export const simpleAuthService = {
 // Expose debug functions globally for easier debugging
 if (typeof window !== 'undefined') {
     (window as any).simpleAuthService = simpleAuthService;
+    (window as any).resetToTestUser = simpleAuthService.forceResetToTestUser;
     
     // Also expose diagnosis debug functions
     import('../utils/diagnosisRecorder').then(module => {

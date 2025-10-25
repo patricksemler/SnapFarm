@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { fileAuthService } from '../services/fileAuthService';
+
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -220,77 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 {isSignUp ? 'Sign In' : 'Sign Up'}
               </button>
             </p>
-            
-            {/* Debug buttons for development */}
-            <div className="mt-2 space-x-2">
-              <button
-                onClick={async () => {
-                  await fileAuthService.debugListUsers();
-                }}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                List Users
-              </button>
-              <button
-                onClick={async () => {
-                  await fileAuthService.clearAllData();
-                  alert('All auth data cleared!');
-                }}
-                className="text-xs text-red-400 hover:text-red-600"
-              >
-                Clear Data
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    setError('');
-                    console.log('🧪 Quick login as Sid Diddy...');
-                    await signIn('siddiddy@gmail.com', '123');
-                    onClose();
-                  } catch (error: any) {
-                    console.error('❌ Quick login failed:', error);
-                    setError(error.message);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                className="text-xs text-green-400 hover:text-green-600"
-              >
-                Quick Login (Sid)
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    // Test sign up and sign in
-                    console.log('🧪 Testing auth flow...');
-                    
-                    // Clear data first
-                    await fileAuthService.clearAllData();
-                    
-                    // Test sign up
-                    const user = await fileAuthService.signUp('test@example.com', 'password123', 'Test User');
-                    console.log('✅ Sign up test passed:', user.email);
-                    
-                    // Test sign out
-                    await fileAuthService.signOut();
-                    console.log('✅ Sign out test passed');
-                    
-                    // Test sign in
-                    const signedInUser = await fileAuthService.signIn('test@example.com', 'password123');
-                    console.log('✅ Sign in test passed:', signedInUser.email);
-                    
-                    alert('Auth test completed successfully! Check console for details.');
-                  } catch (error: any) {
-                    console.error('❌ Auth test failed:', error);
-                    alert('Auth test failed: ' + error.message);
-                  }
-                }}
-                className="text-xs text-blue-400 hover:text-blue-600"
-              >
-                Test Auth
-              </button>
-            </div>
+
           </div>
         </div>
       </div>

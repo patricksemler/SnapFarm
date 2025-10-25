@@ -65,8 +65,8 @@ if (typeof window !== 'undefined') {
   (window as any).testLLM = runLLMTests;
   
   // Also make auth debugging available
-  import('../services/fileAuthService').then(({ fileAuthService }) => {
-    (window as any).debugAuth = fileAuthService.debugAuthState;
-    (window as any).clearAuth = fileAuthService.clearAllData;
+  import('../services/simpleAuthService').then(({ simpleAuthService }) => {
+    (window as any).debugAuth = simpleAuthService.debugUsers;
+    (window as any).clearAuth = simpleAuthService.resetTestData;
   });
 }

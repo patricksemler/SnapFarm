@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { simpleAuthService } from '../services/simpleAuthService';
+
 
 export const SignIn: React.FC = () => {
   const navigate = useNavigate();
@@ -102,40 +102,7 @@ export const SignIn: React.FC = () => {
             </p>
           </div>
 
-          {/* Test Credentials Info */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Test Account</h4>
-                <div className="text-sm text-blue-700 dark:text-blue-300">
-                  <p><strong>Email:</strong> siddiddy@gmail.com</p>
-                  <p><strong>Password:</strong> password</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ email: 'siddiddy@gmail.com', password: 'password' })}
-                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Use Test Account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    simpleAuthService.debugUsers();
-                    simpleAuthService.resetTestData();
-                  }}
-                  className="px-3 py-1 text-xs bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Reset Data
-                </button>
-              </div>
-            </div>
-          </div>
+
 
           {/* Error Message */}
           {error && (
